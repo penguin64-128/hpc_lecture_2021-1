@@ -3,6 +3,7 @@
 #include <cmath>
 #include <vector>
 #include <chrono>
+#include <omp.h>
 using namespace std;
 
 int main(int argc, char** argv) {
@@ -14,7 +15,7 @@ int main(int argc, char** argv) {
 //MPI プロセス番号の取得
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  const int N = 256;
+  const int N = 1024;
   vector<float> A(N*N);
   vector<float> B(N*N);
   vector<float> C(N*N, 0);
@@ -41,6 +42,8 @@ int main(int argc, char** argv) {
   for(int irank=0; irank<size; irank++) {
     auto tic = chrono::steady_clock::now();
     offset = N/size*((rank+irank) % size);
+//OpenMP for文　並列化　3重
+#pragma omp parallel for collapse(3)
     for (int i=0; i<N/size; i++)
       for (int j=0; j<N/size; j++)
         for (int k=0; k<N; k++)
