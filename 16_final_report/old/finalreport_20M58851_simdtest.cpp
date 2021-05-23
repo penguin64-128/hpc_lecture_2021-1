@@ -43,12 +43,12 @@ int main(int argc, char** argv) {
   for(int irank=0; irank<size; irank++) {
     auto tic = chrono::steady_clock::now();
     offset = N/size*((rank+irank) % size);
-//OpenMP for文　並列化　3重 ⇒SIMD導入のため2重に変更
-  #pragma omp parallel for collapse(2)
+  omp_set_num_threads(16);
+  #pragma omp parallel num_threads(16)
+　//OpenMP for文　並列化　3重
+　#pragma omp parallel for collapse(3)
     for (int i=0; i<N/size; i++)
       for (int j=0; j<N/size; j++)
-  //SIMD　並列計算導入
-  #pragma omp simd 
         for (int k=0; k<N; k++)
           subC[N*i+j+offset] += subA[N*i+k] * subB[N/size*k+j];
     auto toc = chrono::steady_clock::now();
@@ -61,10 +61,14 @@ int main(int argc, char** argv) {
   MPI_Allgather(&subC[0], N*N/size, MPI_FLOAT, &C[0], N*N/size, MPI_FLOAT, MPI_COMM_WORLD);
   for (int i=0; i<N; i++)
     for (int j=0; j<N; j++)
-    //SIMD　並列計算導入
-    #pragma omp simd 
       for (int k=0; k<N; k++)
-        C[N*i+j] -= A[N*i+k] * B[N*k+j];
+      // SIMD　計算の並列化
+          __m256 vA = _mm256_load_ps(&(A[N*i+k]));
+          __m256 vB = _mm256_load_ps(&(B[N*i+k]));
+          __m256 vC = _mm256_load_ps(&(C[N*i+j]));
+          __m256 vC -= __m256_mul_ps(vA,vB);
+          _mm256_store_ps(C,vC);
+//        C[N*i+j] -= A[N*i+k] * B[N*k+j];
   double err = 0;
   for (int i=0; i<N; i++)
     for (int j=0; j<N; j++)

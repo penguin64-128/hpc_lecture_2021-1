@@ -1,4 +1,4 @@
-・サンプルプログラムの性能
+ーーーーーーサンプルプログラムの性能調査ーーーーーー
 qrsh -g tga-hpc-lecture -l s_gpu=1 -l h_rt=1:10:00
 module load intel-mpi
 module load gcc
@@ -32,3 +32,88 @@ error: 0.000129
 ・性能評価を行うため定数を拡大して継続
 ⇒　4倍　N:1024　で評価着手
 
+ーーーーーーOpenMP適用ーーーーーー
+
+qrsh -g tga-hpc-lecture -l s_gpu=1 -l h_rt=1:10:00
+module load intel-mpi
+module load gcc
+
+mpicxx finalreport_20M58851.cpp -fopenmp 
+mpirun -np 4 ./a.out
+
+//OpenMP for文　並列化　3重
+#pragma omp parallel for collapse(3)
+
+N    : 256
+comp : 0.092972 s
+comm : 0.000221 s
+total: 0.093193 s (0.360054 GFlops)　▲2.8%高速化
+error: 0.000016
+
+N    : 1024
+comp : 7.807791 s
+comm : 0.064243 s
+total: 7.872035 s (0.272799 GFlops)　▲3.22%高速化
+error: 0.000129
+
+⇒　for文への適用で性能改善(小)
+
+ーーーーーSIMD適用ーーーー
+
+qrsh -g tga-hpc-lecture -l s_gpu=1 -l h_rt=1:10:00
+module load intel-mpi gcc intel
+
+（参考）コンパイラで並列化
+mpicxx finalreport_20M58851.cpp -march=native -O3 -fopenmp
+
+N    : 1024
+comp : 7.036658 s
+comm : 0.004620 s
+total: 7.041278 s (0.304985 GFlops)　▲13.43%高速化
+error: 0.000129
+
+//ソースコードに埋め込み
+mpicxx finalreport_20M58851.cpp -fopenmp 
+mpirun -np 4 ./a.out
+
+//OpenMP for文　並列化　3重 ⇒SIMD導入のため2重に変更
+#pragma omp parallel for collapse(2)
+//SIMD　並列計算導入
+#pragma omp simd
+
+N    : 256
+comp : 0.006318 s
+comm : 0.000194 s
+total: 0.006511 s (5.153369 GFlops)　▲93.2%高速化
+error: 0.000006　▲62.5%エラー率低減
+
+N    : 1024
+comp : 1.209610 s
+comm : 0.003857 s
+total: 1.213467 s (1.769709 GFlops)　▲85.09%高速化　
+error: 0.000034　▲73.65％エラー率低減
+
+⇒　計算部分のSIMD化で性能改善(大)
+
+(参考)スレッド数を増やした際の高速化効果
+だんだんcommがボトルネックになっている
+
+mpicxx finalreport_20M58851.cpp -fopenmp 
+mpirun -np 16 ./a.out
+N    : 1024
+comp : 0.594099 s
+comm : 0.601504 s
+total: 1.195603 s (1.796151 GFlops)
+error: 0.000034
+
+mpirun -np 32 ./a.out 　
+N    : 1024
+comp : 0.133154 s
+comm : 1.547499 s
+total: 1.680652 s (1.277768 GFlops)
+error: 0.000034
+
+ーーーーーCUDA適用ーーーー
+
+
+ーーーーーキャッシュブロッキング適用ーーーー
