@@ -38,22 +38,22 @@ qrsh -g tga-hpc-lecture -l s_gpu=1 -l h_rt=1:10:00
 module load intel-mpi
 module load gcc
 
-mpicxx finalreport_20M58851.cpp -fopenmp 
+mpicxx finalreport_20M58851.cpp -O3 -fopenmp 
 mpirun -np 4 ./a.out
 
 //OpenMP for文　並列化　3重
 #pragma omp parallel for collapse(3)
 
 N    : 256
-comp : 0.092972 s
-comm : 0.000221 s
-total: 0.093193 s (0.360054 GFlops)　▲2.8%高速化
+comp : 0.087599 s
+comm : 0.003761 s
+total: 0.091360 s (0.367276 GFlops)　▲4.7%性能改善
 error: 0.000016
 
 N    : 1024
-comp : 7.807791 s
-comm : 0.064243 s
-total: 7.872035 s (0.272799 GFlops)　▲3.22%高速化
+comp : 7.366435 s
+comm : 0.002450 s
+total: 7.368885 s (0.291426 GFlops)　▲9.4%性能改善
 error: 0.000129
 
 ⇒　for文への適用で性能改善(小)
@@ -69,11 +69,11 @@ mpicxx finalreport_20M58851.cpp -march=native -O3 -fopenmp
 N    : 1024
 comp : 7.036658 s
 comm : 0.004620 s
-total: 7.041278 s (0.304985 GFlops)　▲13.43%高速化
+total: 7.041278 s (0.304985 GFlops)　▲13.4%高速化
 error: 0.000129
 
 //ソースコードに埋め込み
-mpicxx finalreport_20M58851.cpp -fopenmp 
+mpicxx finalreport_20M58851.cpp -O3 -fopenmp 
 mpirun -np 4 ./a.out
 
 //OpenMP for文　並列化　3重 ⇒SIMD導入のため2重に変更
@@ -90,7 +90,7 @@ error: 0.000006　▲62.5%エラー率低減
 N    : 1024
 comp : 1.209610 s
 comm : 0.003857 s
-total: 1.213467 s (1.769709 GFlops)　▲85.09%高速化　
+total: 1.213467 s (1.769709 GFlops)　▲85.1%高速化　
 error: 0.000034　▲73.65％エラー率低減
 
 ⇒　計算部分のSIMD化で性能改善(大)
