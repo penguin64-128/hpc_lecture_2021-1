@@ -1,0 +1,12 @@
+・サンプルプログラムの性能
+qrsh -g tga-hpc-lecture -l s_gpu=1 -l h_rt=1:10:00
+module load intel-mpi
+module load gcc
+mpicxx example.cpp 
+mpirun -np 4 ./a.out
+
+N    : 256
+comp : 0.092033 s
+comm : 0.003843 s
+total: 0.095876 s (0.349978 GFlops)
+error: 0.000016
