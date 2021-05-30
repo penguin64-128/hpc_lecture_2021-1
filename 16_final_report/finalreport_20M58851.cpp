@@ -19,9 +19,9 @@ mpirun -np 4 ./a.out
 
 結果
 N    : 1024
-comp : 0.086229 s
-comm : 0.005121 s
-total: 0.091350 s (23.508393 GFlops)
+comp : 0.029344 s
+comm : 0.009614 s
+total: 0.038957 s (55.123765 GFlops)
 error: 0.000089
 
 （参考）
