@@ -113,6 +113,17 @@ comm : 1.547499 s
 total: 1.680652 s (1.277768 GFlops)
 error: 0.000034
 
+ーーーーーサンプルコードのMPI変更点を反映ーーーーー
+
+qrsh -g tga-hpc-lecture -l s_gpu=1 -l h_rt=1:10:00
+module load intel-mpi gcc intel
+
+mpicxx finalreport_20M58851.cpp -O3 -fopenmp
+mpirun -np 4 ./a.out
+
+結果が大きく変わってしまったためOpenMPから再検討
+
+
 ーーーーーCUDA適用ーーーー
 
 
