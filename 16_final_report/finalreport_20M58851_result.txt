@@ -127,10 +127,10 @@ mpirun -np 4 ./a.out
 
 変更後のサンプルプログラムの性能(example.cpp)
 N    : 1024
-comp : 1.232392 s
-comm : 0.003374 s
-total: 1.235765 s (1.737776 GFlops)
-error: 0.000129
+comp : 0.029344 s
+comm : 0.009614 s
+total: 0.038957 s (55.123765 GFlops)
+error: 0.000089
 
 08_cache_cpu/04_simd_blocking.cpp,12_profiler/00_matmul.cppを参考にコード書き換え
 N    : 1024
