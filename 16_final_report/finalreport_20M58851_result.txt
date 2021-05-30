@@ -123,8 +123,23 @@ mpirun -np 4 ./a.out
 
 結果が大きく変わってしまったためOpenMPから再検討
 
+ーーーーーーOpenMP+SIMD+キャッシュブロッキング適用適用ーーーーーー
+
+変更後のサンプルプログラムの性能(example.cpp)
+N    : 1024
+comp : 1.232392 s
+comm : 0.003374 s
+total: 1.235765 s (1.737776 GFlops)
+error: 0.000129
+
+08_cache_cpu/04_simd_blocking.cpp,12_profiler/00_matmul.cppを参考にコード書き換え
+N    : 1024
+comp : 0.086229 s
+comm : 0.005121 s
+total: 0.091350 s (23.508393 GFlops)
+error: 0.000089
+
 
 ーーーーーCUDA適用ーーーー
 
 
-ーーーーーキャッシュブロッキング適用ーーーー

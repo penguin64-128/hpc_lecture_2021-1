@@ -1,11 +1,98 @@
-#include <mpi.h>
+include <cstdlib>
 #include <cstdio>
 #include <cmath>
 #include <vector>
 #include <chrono>
 #include <omp.h>
+#include <mpi.h>
 #include <immintrin.h>
 using namespace std;
+
+//20M58851　finalreport
+/*
+実行コマンド
+qrsh -g tga-hpc-lecture -l s_gpu=1 -l h_rt=1:10:00
+module load intel-mpi gcc intel
+
+mpicxx finalreport_20M58851.cpp -O3 -fopenmp
+mpirun -np 4 ./a.out
+
+結果
+N    : 1024
+comp : 0.086229 s
+comm : 0.005121 s
+total: 0.091350 s (23.508393 GFlops)
+error: 0.000089
+
+（参考）
+変更後のサンプルプログラムの性能(example.cpp)
+N    : 1024
+comp : 1.232392 s
+comm : 0.003374 s
+total: 1.235765 s (1.737776 GFlops)
+error: 0.000129
+
+試行錯誤の詳細は下記参照
+finalreport_20M58851_result.txt
+*/
+
+//12_profiler 00matmulを参考に改編
+void matmult(vector<float> &subA, vector<float> &subB, vector<float> &subC, int N, int size,int offset) {
+  const int m = N, n = N, k = N;
+  const int kc = N/8; //N÷8
+  const int nc = N/64; //N÷64
+  const int mc = N/16; //N÷16
+  const int nr = N/64; //N÷64
+  const int mr = N/128;  //N÷128
+//OpenMP導入
+#pragma omp parallel for collapse(2)
+  for (int jc=0; jc<n/size; jc+=nc) {
+    for (int pc=0; pc<k; pc+=kc) {
+      float Bc[kc*nc];
+      for (int p=0; p<kc; p++) {
+        for (int j=0; j<nc; j++) {
+            // Pack into Bc
+            Bc[p*nc+j] = subB[N/size*(p+pc)+j+jc];
+        }
+      }
+      for (int ic=0; ic<m/size; ic+=mc) {
+        float Ac[mc*kc],Cc[mc*nc];
+        for (int i=0; i<mc; i++) {
+          for (int p=0; p<kc; p++) {
+            // Pack into Ac
+            Ac[i*kc+p] = subA[N*(i+ic)+p+pc];
+          }
+          for (int j=0; j<nc; j++) {
+            // Initialize Cc
+            Cc[i*nc+j] = 0;
+          }
+        }
+        for (int jr=0; jr<nc; jr+=nr) {
+          for (int ir=0; ir<mc; ir+=mr) {
+            for (int kr=0; kr<kc; kr++) {
+              for (int i=ir; i<ir+mr; i++) {
+                __m256 Avec = _mm256_broadcast_ss(Ac+i*kc+kr);
+                for (int j=jr; j<jr+nr; j+=8) {
+                  __m256 Bvec = _mm256_load_ps(Bc+kr*nc+j);
+                  __m256 Cvec = _mm256_load_ps(Cc+i*nc+j);
+                  Cvec = _mm256_fmadd_ps(Avec, Bvec, Cvec);
+                  _mm256_store_ps(Cc+i*nc+j, Cvec);
+                }
+              }
+            }
+          }
+        }
+        for (int i=0; i<mc; i++) {
+          for (int j=0; j<nc; j++) {
+            // Unpack form Cc
+            subC[N*(i+ic)+j+jc+offset] += Cc[i*nc+j];
+          }
+        }
+      }
+    }
+  }
+}
+
 
 int main(int argc, char** argv) {
   int size, rank;
@@ -16,18 +103,20 @@ int main(int argc, char** argv) {
 //MPI プロセス番号の取得i//
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  const int N = 256;
+  const int N = 1024;
   vector<float> A(N*N);
   vector<float> B(N*N);
   vector<float> C(N*N, 0);
   vector<float> subA(N*N/size);
   vector<float> subB(N*N/size);
   vector<float> subC(N*N/size, 0);
-  vector<float> recv(N*N/size);  
+  vector<float> recv(N*N/size);
+
   for (int i=0; i<N; i++) {
     for (int j=0; j<N; j++) {
       A[N*i+j] = drand48();
       B[N*i+j] = drand48();
+      C[N*i+j] = drand48();
     }
   }
   int offset = N/size*rank;
@@ -44,42 +133,9 @@ int main(int argc, char** argv) {
   for(int irank=0; irank<size; irank++) {
     auto tic = chrono::steady_clock::now();
     offset = N/size*((rank+irank) % size);
-//OpenMP for文　並列化　
-#pragma omp parallel for
-    for (int i=0; i<N/size; i++)
-//ループ入れ替え
-      for (int k=0; k<N/size; k++)
-        for (int j=0; j<N; j++){
-          //SIMD動かない
-          //__m256 Avec = _mm256_load_ps(subA+N*i+k);
-          //__m256 Bvec = _mm256_load_ps(subB+N/size*k+j);
-          //__m256 Cvec = _mm256_load_ps(subC+N*i+j+offset);
-          //Cvec = _mm256_fmadd_ps(Avec,Bvec,Cvec);
-          //_mm256_store_ps(subC+N*i+j+offset,Cvec);
-          
-          subC[N*i+k+offset] += subA[N*i+j] * subB[N/size*j+k];
 
-          //ループを開いて高速化
-          //subC[N*i+j+offset] += subA[N*i+k] * subB[N/size*k+j];
-          //subC[N*i+j1+offset] += subA[N*i+k] * subB[N/size*k+j1];
-          //subC[N*i+j2+offset] += subA[N*i+k] * subB[N/size*k+j2];
-          //subC[N*i+j3+offset] += subA[N*i+k] * subB[N/size*k+j3];
+    matmult(subA,subB,subC,N,size,offset);
 
-          //subC[N*i1+j+offset] += subA[N*i1+k] * subB[N/size*k+j];
-          //subC[N*i1+j1+offset] += subA[N*i1+k] * subB[N/size*k+j1];
-          //subC[N*i1+j2+offset] += subA[N*i1+k] * subB[N/size*k+j2];
-          //subC[N*i1+j3+offset] += subA[N*i1+k] * subB[N/size*k+j3];
-
-          //subC[N*i2+j+offset] += subA[N*i2+k] * subB[N/size*k+j];
-          //subC[N*i2+j1+offset] += subA[N*i2+k] * subB[N/size*k+j1];
-          //subC[N*i2+j2+offset] += subA[N*i2+k] * subB[N/size*k+j2];
-          //subC[N*i2+j3+offset] += subA[N*i2+k] * subB[N/size*k+j3];
-
-          //subC[N*i3+j+offset] += subA[N*i3+k] * subB[N/size*k+j];
-          //subC[N*i3+j1+offset] += subA[N*i3+k] * subB[N/size*k+j1];
-          //subC[N*i3+j2+offset] += subA[N*i3+k] * subB[N/size*k+j2];
-          //subC[N*i3+j3+offset] += subA[N*i3+k] * subB[N/size*k+j3];
-        }
     auto toc = chrono::steady_clock::now();
     comp_time += chrono::duration<double>(toc - tic).count();
     MPI_Request request[2];
@@ -96,16 +152,16 @@ int main(int argc, char** argv) {
   MPI_Allgather(&subC[0], N*N/size, MPI_FLOAT, &C[0], N*N/size, MPI_FLOAT, MPI_COMM_WORLD);
 
 //答えあわせ
+#pragma omp parallel for
   for (int i=0; i<N; i++)
-    //ループ順序入れ替え
-    for (int k=0; k<N; k++)
-      for (int j=0; j<N; j++)
+    for (int j=0; j<N; j++)
+      for (int k=0; k<N; k++)
         C[N*i+j] -= A[N*i+k] * B[N*k+j];
   double err = 0;
   for (int i=0; i<N; i++)
     for (int j=0; j<N; j++)
       err += fabs(C[N*i+j]);
-  if(rank==0) {
+  if(rank==0){
     double time = comp_time+comm_time;
     printf("N    : %d\n",N);
     printf("comp : %lf s\n", comp_time);
