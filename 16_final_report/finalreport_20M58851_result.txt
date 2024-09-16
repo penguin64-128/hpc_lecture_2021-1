@@ -1,0 +1,34 @@
+・サンプルプログラムの性能
+qrsh -g tga-hpc-lecture -l s_gpu=1 -l h_rt=1:10:00
+module load intel-mpi
+module load gcc
+
+mpicxx finalreport_20M58851.cpp 
+mpirun -np 4 ./a.out
+
+N    : 256
+comp : 0.092033 s
+comm : 0.003843 s
+total: 0.095876 s (0.349978 GFlops)
+error: 0.000016
+
+2倍
+N    : 512 
+comp : 0.823479 s
+comm : 0.000751 s
+total: 0.824230 s (0.325680 GFlops)
+error: 0.000046
+
+4倍
+N    : 1024
+comp : 8.130553 s
+comm : 0.002642 s
+total: 8.133195 s (0.264039 GFlops)
+error: 0.000129
+
+8倍
+計測不能(5分以上かかる)
+
+・性能評価を行うため定数を拡大して継続
+⇒　4倍　N:1024　で評価着手
+

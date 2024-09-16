@@ -1,0 +1,40 @@
+課題へのアプローチ方法(メモ)
+
+１．評価のためサンプルプログラムの変数(N)を拡大して計測
+Ｎ
+1倍、2倍、4倍、8倍(計測不能)
+⇒　測定結果はfinalreport_20M58851_resultに順次記録
+⇒　評価数の決定
+　　
+
+２．プログラムへのOpenMP適用
+
+N    : 1024
+comp : 8.216360 s
+comm : 0.065191 s
+total: 8.281551 s (0.259309 GFlops)
+error: 0.000129
+20M58851@r6i2n5:~/hpc_lecture_2021/16_final_report> vim finalreport_20M58851.cpp 
+20M58851@r6i2n5:~/hpc_lecture_2021/16_final_report> mpicxx finalreport_20M58851.cpp -fopenmp
+20M58851@r6i2n5:~/hpc_lecture_2021/16_final_report> mpirun -np 4 ./a.out
+N    : 1024
+comp : 8.190377 s
+comm : 0.067320 s
+total: 8.257697 s (0.260058 GFlops)
+error: 0.000129
+20M58851@r6i2n5:~/hpc_lecture_2021/16_final_report> vim finalreport_20M58851.cpp 
+20M58851@r6i2n5:~/hpc_lecture_2021/16_final_report> mpicxx finalreport_20M58851.cpp -fopenmp
+20M58851@r6i2n5:~/hpc_lecture_2021/16_final_report> mpirun -np 4 ./a.out
+N    : 1024
+comp : 7.807922 s
+comm : 0.063031 s
+total: 7.870953 s (0.272837 GFlops)
+error: 0.000129
+
+⇒　これが効果ありそう　もう少し探る
+
+３．プログラムへのSIMD適用
+
+４．プログラムへのCUDA適用
+
+５．プログラムへのキャッシュブロッキング適用
